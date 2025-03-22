@@ -1,12 +1,10 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.AuthenticationRequest;
-import com.example.demo.dto.AuthenticationResponse;
-import com.example.demo.dto.JwtResponse; 
+import com.example.demo.dto.JwtResponse;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.RefreshTokenRequest;
-import com.example.demo.service.AuthService; 
-import com.example.demo.service.AuthenticationService;
+import com.example.demo.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,32 +14,23 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     @Autowired
-    private AuthenticationService authenticationService;
-
-    @Autowired
-    private AuthService authService; // Inyecta el AuthService
+    private AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthenticationResponse> createAuthenticationToken(
-        @RequestBody AuthenticationRequest authenticationRequest) {
-
-        String token = authenticationService.authenticate(authenticationRequest);
-        return ResponseEntity.ok(new AuthenticationResponse(token));
+    public ResponseEntity<JwtResponse> login(@RequestBody AuthenticationRequest request) {
+        String token = authService.autenticarUsuario(request.getUsername(), request.getPassword());
+        return ResponseEntity.ok(new JwtResponse(token));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> registerUser(
-        @RequestBody RegisterRequest registerRequest) {
-
-        String token = authenticationService.register(registerRequest);
-        return ResponseEntity.ok(new AuthenticationResponse(token));
+    public ResponseEntity<JwtResponse> register(@RequestBody RegisterRequest request) {
+        String token = authService.registrarUsuario(request);
+        return ResponseEntity.ok(new JwtResponse(token));
     }
 
-    @PostMapping("/refresh-token") // Cambia la ruta para evitar conflictos
-    public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
-        String refreshToken = request.getRefreshToken();
-        // Validar el refresh token y generar un nuevo JWT
-        String newToken = authService.refreshToken(refreshToken);
-        return ResponseEntity.ok(new JwtResponse(newToken)); // Usa JwtResponse
+    @PostMapping("/refresh-token")
+    public ResponseEntity<JwtResponse> refreshToken(@RequestBody RefreshTokenRequest request) {
+        String newToken = authService.refreshToken(request.getRefreshToken());
+        return ResponseEntity.ok(new JwtResponse(newToken));
     }
 }

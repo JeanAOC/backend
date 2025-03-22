@@ -25,18 +25,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF usando Lambda DSL
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // Permitir acceso sin autenticación a /api/auth/**
-                .anyRequest().authenticated() // Todas las demás rutas requieren autenticación
+                .requestMatchers("/api/auth/**").permitAll()
+                .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Configurar sesiones sin estado
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             );
 
-        // Agregar el filtro JWT antes del filtro de autenticación de Spring Security
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 

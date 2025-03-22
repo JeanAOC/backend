@@ -1,9 +1,11 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.RegisterRequest;
 import com.example.demo.entity.Usuario;
 import com.example.demo.repository.UsuarioRepository;
 import com.example.demo.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,29 +22,41 @@ public class AuthService implements UserDetailsService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JwtUtil jwtUtil; 
+    private JwtUtil jwtUtil;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByUsername(username)
+        return usuarioRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
-        return usuario;
     }
 
-    public Usuario registrarUsuario(Usuario usuario) {
-        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-        return usuarioRepository.save(usuario);
+    public String registrarUsuario(RegisterRequest request) {
+        if (usuarioRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new RuntimeException("El usuario ya existe");
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setUsername(request.getUsername());
+        usuario.setPassword(passwordEncoder.encode(request.getPassword()));
+        usuario.setEmail(request.getEmail());
+        usuario.setRole("USER");
+        usuarioRepository.save(usuario);
+
+        return jwtUtil.generateAccessToken(usuario);
     }
 
-    public String generarToken(String username) {
+    public String autenticarUsuario(String username, String password) {
         UserDetails userDetails = loadUserByUsername(username);
-        return jwtUtil.generateToken(userDetails); 
+        if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+            throw new BadCredentialsException("Credenciales inválidas");
+        }
+        return jwtUtil.generateAccessToken(userDetails);
     }
 
     public String refreshToken(String refreshToken) {
-        if (jwtUtil.validateRefreshToken(refreshToken)) { 
+        if (jwtUtil.validateRefreshToken(refreshToken)) {
             String username = jwtUtil.getUsernameFromRefreshToken(refreshToken);
-            return generarToken(username);
+            return jwtUtil.generateAccessToken(loadUserByUsername(username));
         }
         throw new RuntimeException("Refresh token inválido");
     }

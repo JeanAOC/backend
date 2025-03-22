@@ -2,74 +2,99 @@ package com.example.demo.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
+//import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+//import java.util.HashMap;
+//import java.util.Map;
 import java.util.function.Function;
 
 @Component
 public class JwtUtil {
 
-    private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
-    private static final long EXPIRATION_TIME = 86400000; // 24 horas
+    // ✅ Usamos SecretKey en lugar de Key
+    private static final SecretKey ACCESS_SECRET_KEY = Jwts.SIG.HS256.key().build(); // Genera una clave para HS256
+    private static final SecretKey REFRESH_SECRET_KEY = Jwts.SIG.HS256.key().build(); // Genera una clave para HS256
 
-    public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+    private static final long ACCESS_EXPIRATION = 900000; // 15 minutos
+    private static final long REFRESH_EXPIRATION = 604800000; // 7 días
+
+    // ✅ Método público para acceder a ACCESS_SECRET_KEY
+    public static SecretKey getAccessSecretKey() {
+        return ACCESS_SECRET_KEY;
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    // ✅ Método público para acceder a REFRESH_SECRET_KEY
+    public static SecretKey getRefreshSecretKey() {
+        return REFRESH_SECRET_KEY;
+    }
+
+    // ✅ Generar access token
+    public String generateAccessToken(UserDetails userDetails) {
+        return buildToken(userDetails.getUsername(), ACCESS_SECRET_KEY, ACCESS_EXPIRATION);
+    }
+
+    // ✅ Generar refresh token
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(userDetails.getUsername(), REFRESH_SECRET_KEY, REFRESH_EXPIRATION);
+    }
+
+    // ✅ Método para construir tokens
+    private String buildToken(String subject, SecretKey secretKey, long expiration) {
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(SECRET_KEY)
+                .subject(subject) // ✅ Usamos subject() en lugar de setSubject()
+                .issuedAt(new Date()) // ✅ Usamos issuedAt() en lugar de setIssuedAt()
+                .expiration(new Date(System.currentTimeMillis() + expiration)) // ✅ Usamos expiration() en lugar de setExpiration()
+                .signWith(secretKey) // ✅ Usamos signWith() con SecretKey
                 .compact();
     }
 
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    // ✅ Validar token
+    public boolean validateToken(String token, UserDetails userDetails, SecretKey secretKey) {
+        final String username = extractUsername(token, secretKey);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token, secretKey));
     }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    // ✅ Extraer username del token
+    public String extractUsername(String token, SecretKey secretKey) {
+        return extractClaim(token, Claims::getSubject, secretKey);
     }
 
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    // ✅ Extraer fecha de expiración del token
+    public Date extractExpiration(String token, SecretKey secretKey) {
+        return extractClaim(token, Claims::getExpiration, secretKey);
     }
 
-    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
+    // ✅ Extraer un claim específico del token
+    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver, SecretKey secretKey) {
+        final Claims claims = extractAllClaims(token, secretKey);
         return claimsResolver.apply(claims);
     }
 
-    private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
+    // ✅ Extraer todos los claims del token
+    private Claims extractAllClaims(String token, SecretKey secretKey) {
+        return Jwts.parser()
+                .verifyWith(secretKey) // ✅ Usamos verifyWith() en lugar de setSigningKey()
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
-    private Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+    // ✅ Verificar si el token ha expirado
+    private boolean isTokenExpired(String token, SecretKey secretKey) {
+        return extractExpiration(token, secretKey).before(new Date());
     }
 
-    // Métodos para refresh token
+    // ✅ Validar refresh token
     public boolean validateRefreshToken(String refreshToken) {
-        return !isTokenExpired(refreshToken); // Un refresh token es válido si no ha expirado
+        return !isTokenExpired(refreshToken, REFRESH_SECRET_KEY);
     }
 
+    // ✅ Obtener username desde un refresh token
     public String getUsernameFromRefreshToken(String refreshToken) {
-        return extractUsername(refreshToken); // Reutiliza el método extractUsername
+        return extractUsername(refreshToken, REFRESH_SECRET_KEY);
     }
 }
