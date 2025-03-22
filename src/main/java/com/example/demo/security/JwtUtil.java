@@ -63,4 +63,13 @@ public class JwtUtil {
     private Boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
+
+    // Métodos para refresh token
+    public boolean validateRefreshToken(String refreshToken) {
+        return !isTokenExpired(refreshToken); // Un refresh token es válido si no ha expirado
+    }
+
+    public String getUsernameFromRefreshToken(String refreshToken) {
+        return extractUsername(refreshToken); // Reutiliza el método extractUsername
+    }
 }
