@@ -26,7 +26,7 @@ public class Usuario implements UserDetails {
     @Column(nullable = false)
     private String role; // ADMIN o USER
 
-    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<Post> posts;
 
     // Getters y Setters

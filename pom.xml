@@ -137,6 +137,16 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+    			<groupId>org.flywaydb</groupId>
+    			<artifactId>flyway-maven-plugin</artifactId>
+    			<version>10.20.1</version>
+    			<configuration>
+        			<url>jdbc:sqlserver://localhost:1433;databaseName=fullstack_db;encrypt=false;trustServerCertificate=true</url>
+       			 	<user>sa</user>
+        			<password>24092002</password>
+    			</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>
